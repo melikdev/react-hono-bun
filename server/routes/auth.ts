@@ -1,30 +1,34 @@
+import { db } from "@/adapter";
+import type { Context } from "@/context";
+import { userTable } from "@/db/schemas/auth";
+import { lucia } from "@/lucia";
+import { loggedIn } from "@/middleware/loggedIn";
 import { loginSchema, type SuccessResponse } from "@/shared/types";
-import type { Context } from "../context";
-import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { generateId } from "lucia";
-import { db } from "../adapter";
-import { userTable } from "../db/schemas/auth";
-import { lucia } from "../lucia";
-import postgres from "postgres";
-import { HTTPException } from "hono/http-exception";
 import { eq } from "drizzle-orm";
-import { loggedIn } from "../middleware/loggedIn";
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { generateId } from "lucia";
+import postgres from "postgres";
 
 export const authRouter = new Hono<Context>()
   .post("/signup", zValidator("form", loginSchema), async (c) => {
     const { username, password } = c.req.valid("form");
     const passwordHash = await Bun.password.hash(password);
     const userId = generateId(15);
+
     try {
       await db.insert(userTable).values({
         id: userId,
         username,
         password_hash: passwordHash,
       });
+
       const session = await lucia.createSession(userId, { username });
       const sessionCookie = lucia.createSessionCookie(session.id).serialize();
+
       c.header("Set-Cookie", sessionCookie, { append: true });
+
       return c.json<SuccessResponse>(
         {
           success: true,
@@ -41,16 +45,19 @@ export const authRouter = new Hono<Context>()
   })
   .post("/login", zValidator("form", loginSchema), async (c) => {
     const { username, password } = c.req.valid("form");
+
     const [existingUser] = await db
       .select()
       .from(userTable)
       .where(eq(userTable.username, username))
       .limit(1);
+
     if (!existingUser) {
       throw new HTTPException(401, {
         message: "Incorrect username",
       });
     }
+
     const validPassword = await Bun.password.verify(
       password,
       existingUser.password_hash,
@@ -58,9 +65,12 @@ export const authRouter = new Hono<Context>()
     if (!validPassword) {
       throw new HTTPException(401, { message: "Incorrect password" });
     }
+
     const session = await lucia.createSession(existingUser.id, { username });
     const sessionCookie = lucia.createSessionCookie(session.id).serialize();
+
     c.header("Set-Cookie", sessionCookie, { append: true });
+
     return c.json<SuccessResponse>(
       {
         success: true,
@@ -74,6 +84,7 @@ export const authRouter = new Hono<Context>()
     if (!session) {
       return c.redirect("/");
     }
+
     await lucia.invalidateSession(session.id);
     c.header("Set-Cookie", lucia.createBlankSessionCookie().serialize());
     return c.redirect("/");

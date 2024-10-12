@@ -18,6 +18,7 @@ export const db = drizzle(queryClient, {
     session: sessionTable,
   },
 });
+
 export const adapter = new DrizzlePostgreSQLAdapter(
   db,
   sessionTable,

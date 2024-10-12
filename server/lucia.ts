@@ -8,7 +8,6 @@ export const lucia = new Lucia(adapter, {
       secure: process.env.NODE_ENV === "production",
     },
   },
-
   getUserAttributes: (att) => {
     return { username: att.username };
   },

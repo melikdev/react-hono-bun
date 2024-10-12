@@ -1,8 +1,8 @@
-import type { ErrorResponse } from "@/shared/types";
+import { type ErrorResponse } from "@/shared/types";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { lucia } from "./lucia";
-import { cors } from "hono/cors";
 import type { Context } from "./context";
 import { authRouter } from "./routes/auth";
 
@@ -15,6 +15,7 @@ app.use("*", cors(), async (c, next) => {
     c.set("session", null);
     return next();
   }
+
   const { session, user } = await lucia.validateSession(sessionId);
   if (session && session.fresh) {
     c.header("Set-Cookie", lucia.createSessionCookie(session.id).serialize(), {
