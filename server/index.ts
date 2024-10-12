@@ -15,7 +15,6 @@ app.use("*", cors(), async (c, next) => {
     c.set("session", null);
     return next();
   }
-
   const { session, user } = await lucia.validateSession(sessionId);
   if (session && session.fresh) {
     c.header("Set-Cookie", lucia.createSessionCookie(session.id).serialize(), {
@@ -53,13 +52,16 @@ app.onError((err, c) => {
     return errResponse;
   }
 
-  return c.json<ErrorResponse>({
-    success: false,
-    error:
-      process.env.NODE_ENV === "production"
-        ? "Internal Server Error"
-        : (err.stack ?? err.message),
-  });
+  return c.json<ErrorResponse>(
+    {
+      success: false,
+      error:
+        process.env.NODE_ENV === "production"
+          ? "Interal Server Error"
+          : (err.stack ?? err.message),
+    },
+    500,
+  );
 });
 
 export default app;
